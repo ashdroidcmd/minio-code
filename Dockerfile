@@ -17,4 +17,4 @@ RUN yarn build
 EXPOSE 3002
 
 # Start the app
-CMD ["yarn", "star:prod"]
+CMD ["yarn", "start:prod"]
