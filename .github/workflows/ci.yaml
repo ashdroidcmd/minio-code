@@ -37,10 +37,10 @@ jobs:
 
       - name: docker build nodejs
         run: |
-          docker build -f Dockerfile . -t acemcbmis/uploading-service:${{ steps.vars.outputs.sha_short }}-service
+          docker build -f Dockerfile . -t acemcbmis/uploading-service:${{ steps.vars.outputs.sha_short }}-prod
       - name: docker push
         run: |
-          docker push acemcbmis/uploading-service:${{ steps.vars.outputs.sha_short }}-service
+          docker push acemcbmis/uploading-service:${{ steps.vars.outputs.sha_short }}-prod
 
     outputs:
-      version: ${{ steps.vars.outputs.sha_short}}-service
+      version: ${{ steps.vars.outputs.sha_short}}-prod
