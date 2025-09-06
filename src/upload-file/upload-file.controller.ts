@@ -39,7 +39,7 @@ export class UploadController {
 
   // Upload Multiple File
   @Post('upload-multiple/:bucket/:type')
-  @UseInterceptors(FilesInterceptor('files', 30)) // "files" must match Postman key
+  @UseInterceptors(FilesInterceptor('files', 30))
   async uploadFiles(
     @Param('bucket') bucket: string,
     @Param('type') type: string,
