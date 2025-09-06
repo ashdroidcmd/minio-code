@@ -57,7 +57,7 @@ export class UploadController {
   }
 
   // Delete File
-  @Delete(':bucket/:folder/:filename')
+  @Delete('delete/:bucket/:folder/:filename')
   async deleteFile(
     @Param('bucket') bucket: string,
     @Param('folder') folder: string,
