@@ -1,4 +1,9 @@
-import { UploadFileInfoDto } from './upload-file-info.dto';
+export class UploadFileInfoDto {
+  original: string;
+  storedAs: string;
+  type: string;
+  url: string;
+}
 
 export class UploadResponseDto {
   message: string;

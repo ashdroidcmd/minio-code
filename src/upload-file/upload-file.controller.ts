@@ -12,15 +12,12 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { UploadFileService } from './upload-file.service';
-import {
-  UploadMultipleResponseDto,
-  UploadResponseDto,
-} from './dto/upload-response.dto';
-import { DeleteResponseDto } from './dto/delete-response.dto';
+import { UploadMultipleResponseDto, UploadResponseDto } from './dto/upload.dto';
 import {
   DeleteMultipleRequestDto,
   DeleteMultipleResponseDto,
-} from './dto/delete-multiple.dto';
+  DeleteResponseDto,
+} from './dto/delete.dto';
 
 @Controller('files')
 export class UploadController {

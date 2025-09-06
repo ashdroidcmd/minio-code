@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
   BadRequestException,
@@ -9,14 +8,15 @@ import { Client } from 'minio';
 import {
   UploadMultipleResponseDto,
   UploadResponseDto,
-} from './dto/upload-response.dto';
-import { UploadFileInfoDto } from './dto/upload-file-info.dto';
-import { DeleteResponseDto } from './dto/delete-response.dto';
+  UploadFileInfoDto,
+} from './dto/upload.dto';
 import {
   DeleteFileResultDto,
   DeleteMultipleRequestDto,
   DeleteMultipleResponseDto,
-} from './dto/delete-multiple.dto';
+  DeleteResponseDto,
+} from './dto/delete.dto';
+import { generateUniqueFileName } from '../helpers/filename.helper';
 
 @Injectable()
 export class UploadFileService {
@@ -32,16 +32,6 @@ export class UploadFileService {
     });
   }
 
-  // Generate Unique File Name
-  private generateUniqueFileName(originalName: string): string {
-    const now = new Date();
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    const dateTime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
-      now.getDate(),
-    )}-${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
-    return `${dateTime}-${originalName}`;
-  }
-
   // Upload Single File
   async uploadFile(
     bucket: string,
@@ -49,39 +39,9 @@ export class UploadFileService {
     file: Express.Multer.File,
   ): Promise<UploadResponseDto> {
     const buffer = file.buffer;
-    const uniqueFileName = this.generateUniqueFileName(file.originalname);
+    const uniqueFileName = generateUniqueFileName(file.originalname);
 
-    await this.minioClient.putObject(
-      bucket,
-      `${type}/${uniqueFileName}`,
-      buffer,
-      buffer.length,
-      { 'Content-Type': file.mimetype },
-    );
-
-    return {
-      message: '✅ File uploaded successfully',
-      bucket,
-      original: file.originalname,
-      storedAs: uniqueFileName,
-      type: file.mimetype,
-      url: `https://${process.env.ENDPOINT}/${bucket}/${type}/${uniqueFileName}`,
-    };
-  }
-
-  // Upload Multiple File
-  async uploadFiles(
-    bucket: string,
-    type: string,
-    files: Express.Multer.File[],
-  ): Promise<UploadMultipleResponseDto> {
-    // 👇 tell TS what this is
-    const uploadedFiles: UploadFileInfoDto[] = [];
-
-    for (const file of files) {
-      const buffer = file.buffer;
-      const uniqueFileName = this.generateUniqueFileName(file.originalname);
-
+    try {
       await this.minioClient.putObject(
         bucket,
         `${type}/${uniqueFileName}`,
@@ -89,15 +49,54 @@ export class UploadFileService {
         buffer.length,
         { 'Content-Type': file.mimetype },
       );
-
-      uploadedFiles.push({
+      return {
+        message: '✅ File uploaded successfully',
+        bucket,
         original: file.originalname,
         storedAs: uniqueFileName,
         type: file.mimetype,
         url: `https://${process.env.ENDPOINT}/${bucket}/${type}/${uniqueFileName}`,
-      });
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Failed to upload file: ${error.message}`,
+      );
     }
+  }
 
+  // Upload Multiple Files
+  async uploadFiles(
+    bucket: string,
+    type: string,
+    files: Express.Multer.File[],
+  ): Promise<UploadMultipleResponseDto> {
+    const uploadedFiles: UploadFileInfoDto[] = [];
+
+    for (const file of files) {
+      const buffer = file.buffer;
+      const uniqueFileName = generateUniqueFileName(file.originalname);
+
+      try {
+        await this.minioClient.putObject(
+          bucket,
+          `${type}/${uniqueFileName}`,
+          buffer,
+          buffer.length,
+          { 'Content-Type': file.mimetype },
+        );
+
+        uploadedFiles.push({
+          original: file.originalname,
+          storedAs: uniqueFileName,
+          type: file.mimetype,
+          url: `https://${process.env.ENDPOINT}/${bucket}/${type}/${uniqueFileName}`,
+        });
+      } catch (error) {
+        throw new InternalServerErrorException(
+          `Failed to upload ${file.originalname}: ${error.message}`,
+        );
+      }
+    }
     return {
       message: '✅ Files uploaded successfully',
       bucket,
@@ -110,22 +109,19 @@ export class UploadFileService {
     if (!bucket || !folder || !filename) {
       throw new BadRequestException('Missing required parameters');
     }
-
     const objectName = `${folder}/${filename}`;
 
     try {
       const dataStream = await this.minioClient.getObject(bucket, objectName);
-
       // Pipe the stream directly to response
       dataStream.pipe(res);
 
-      dataStream.on('error', (err) => {
-        console.error('Stream error:', err);
+      dataStream.on('error', (error) => {
+        console.error('Stream error:', error);
         throw new InternalServerErrorException('Error streaming file');
       });
-    } catch (err) {
-      console.error('MinIO error:', err);
-      throw new InternalServerErrorException(err.message);
+    } catch (error) {
+      throw new InternalServerErrorException(error.message);
     }
   }
 
@@ -149,9 +145,10 @@ export class UploadFileService {
         bucket,
         object: objectName,
       };
-    } catch (err) {
-      console.error('❌ Delete error:', err);
-      throw new InternalServerErrorException('Delete failed: ' + err.message);
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `Failed to upload ${error.message}`,
+      );
     }
   }
 
@@ -174,9 +171,10 @@ export class UploadFileService {
       try {
         await this.minioClient.removeObject(bucket, objectName);
         results.push({ filename, status: 'deleted' });
-      } catch (err) {
-        console.error(`❌ Error deleting: ${filename}`, err.message);
-        results.push({ filename, status: 'error', error: err.message });
+      } catch (error) {
+        throw new InternalServerErrorException(
+          `Failed to upload ${error.message}`,
+        );
       }
     }
 
